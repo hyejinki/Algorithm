@@ -1,91 +1,111 @@
 from collections import deque
-
 N, M, K = map(int, input().split())
 arr = [list(map(int, input().split())) for _ in range(N)]
-attack_arr = [[0] * M for _ in range(N)]
+attack = [[0]*M for _ in range(N)]
 
 
-def bfs(si, sj, ei, ej):
+def repair(qset):
+    for i in range(N):
+        for j in range(M):
+            if (i, j) not in qset and arr[i][j] != 0:
+                arr[i][j] += 1
+
+
+def bfs(si, sj, ei, ej, p):
+
+    flag = 0
     q = deque()
-    visited = [[[] for _ in range(M)] for _ in range(N)]
-    visited[si][sj] = (si, sj)
+    v = [[[] for _ in range(M)] for _ in range(N)]
+    q_set = set()
+
     q.append((si, sj))
-    d = arr[si][sj]
+    v[si][sj] = (si, sj)
+    q_set.add((si, sj))
+    q_set.add((ei, ej))
 
     while q:
         ci, cj = q.popleft()
+
         if (ci, cj) == (ei, ej):
-            arr[ei][ej] = max(0, arr[ci][cj]-d)
+            flag = 1
+            arr[ci][cj] = max(0, arr[ci][cj] - p)
             while True:
-                ci, cj = visited[ci][cj]
+                ci, cj = v[ci][cj]
                 if (ci, cj) == (si, sj):
+                    repair(q_set)
                     return True
-                arr[ci][cj] = max(0, arr[ci][cj]-d//2)
-                f_set.add((ci, cj))
+                q_set.add((ci, cj))
+                arr[ci][cj] = max(0, arr[ci][cj] - p//2)
 
         for di, dj in ((0, 1), (1, 0), (0, -1), (-1, 0)):
-            ni, nj = (ci + di) % N, (cj + dj) % M
-            if len(visited[ni][nj]) == 0 and arr[ni][nj] > 0:
+            ni, nj = (ci + di)%N, (cj + dj)%M
+            if arr[ni][nj] != 0 and len(v[ni][nj]) == 0:
                 q.append((ni, nj))
-                visited[ni][nj] = (ci, cj)
-
-    return False
+                v[ni][nj] = (ci, cj)
 
 
-def bomb(si, sj, ei, ej):
-    d = arr[si][sj]
-    arr[ei][ej] = max(0, arr[ei][ej] - d)
-    for di, dj in ((0, -1), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1)):
-        ni, nj = (ei+di)%N, (ej+dj)%M
-        if (ni, nj) != (si, sj):
-            arr[ni][nj] = max(0, arr[ni][nj] - d//2)
-            f_set.add((ni, nj))
+    if flag == 0:
+        return False
 
 
-for T in range(1, K+1):
-    minV, mx_attack, si, sj = 5001, 0, -1, -1
+
+def bomb(si, sj, ei, ej, p):
+
+    q_set = set()
+    q_set.add((si, sj))
+    q_set.add((ei, ej))
+    arr[ei][ej] = max(0, arr[ei][ej] - p)
+
+    for di, dj in ((-1,0), (-1,1), (0,1), (1,1), (1,0), (1,-1), (0,-1), (-1,-1)):
+        ni, nj = (ei+di) % N, (ej+dj) % M
+        if arr[ni][nj] != 0 and (ni, nj) != (si, sj):
+            q_set.add((ni, nj))
+            arr[ni][nj] = max(0, arr[ni][nj] - p//2)
+
+    repair(q_set)
+
+
+for turn in range(1, K+1): #턴 수 챙겨야함
+
+
+    # 공격자 선정
+    minV = 5001
+    mi, mj = [0, 0]
     for i in range(N):
         for j in range(M):
-            if arr[i][j]<=0: continue
-            if arr[i][j] < minV or (arr[i][j] == minV and attack_arr[i][j] > mx_attack) or\
-                (arr[i][j] == minV and attack_arr[i][j] == mx_attack and i+j>si+sj) or \
-                (arr[i][j] == minV and attack_arr[i][j] == mx_attack and i+j==si+sj and j>sj):
-                minV, mx_attack, si, sj = arr[i][j], attack_arr[i][j], i, j
+            if arr[i][j] != 0:
+                if arr[i][j] < minV or (arr[i][j] == minV and attack[i][j] > attack[mi][mj]) or \
+                        (arr[i][j] == minV and attack[i][j] == attack[mi][mj] and (i+j) > (mi+mj)) or \
+                        (arr[i][j] == minV and attack[i][j] == attack[mi][mj] and (i+j) == (mi+mj) and j > mj):
+                    minV = arr[i][j]
+                    mi, mj = i, j
 
-    maxV, mn_attack, ei, ej = 0, T, N, M
+
+    # 공격대상자
+    maxV = 0
+    mxi, mxj = [0, 0]
     for i in range(N):
         for j in range(M):
-            if arr[i][j]<=0: continue
-            if arr[i][j] > maxV or (arr[i][j] == maxV and attack_arr[i][j] < mn_attack) or\
-            (arr[i][j] == maxV and attack_arr[i][j] == mn_attack and i+j<ei+ej) or \
-            (arr[i][j] == maxV and attack_arr[i][j] == mn_attack and i+j==ei+ej and j<ej):
-                maxV, mn_attack, ei, ej = arr[i][j], attack_arr[i][j], i, j
+            if arr[i][j] != 0:
+                if arr[i][j] > maxV or (arr[i][j] == maxV and attack[i][j] < attack[mxi][mxj]) or \
+                        (arr[i][j] == maxV and attack[i][j] == attack[mxi][mxj] and (i + j) < (mxi + mxj)) or \
+                        (arr[i][j] == maxV and attack[i][j] == attack[mxi][mxj] and (i + j) == (mxi + mxj) and j < mxj):
+                    maxV = arr[i][j]
+                    mxi, mxj = i, j
 
-    #레이저 공격
-    arr[si][sj] += (M+N)
-    attack_arr[si][sj] = T
-    f_set = set()
-    f_set.add((si, sj))
-    f_set.add((ei, ej))
+    arr[mi][mj] += N + M
+    if bfs(mi, mj, mxi, mxj, arr[mi][mj]) == False: #레이저
+        bomb(mi, mj, mxi, mxj, arr[mi][mj])
 
-    if bfs(si, sj, ei, ej) == False:
-    #포탄 공격
-        bomb(si, sj, ei, ej)
+    attack[mi][mj] = turn
 
-
-    #포탑 정비
-    for i in range(N):
-        for j in range(M):
-            if arr[i][j] > 0 and (i, j) not in f_set:
-                arr[i][j] += 1
-
-    # 종료
-    cnt = N*M
+    cnt = N * M
     for row in arr:
-        cnt -=row.count(0)
-    if cnt<= 1:
+        cnt -= row.count(0)
+
+    if cnt == 1:
         break
 
 
-print(max(max(row) for row in arr))
+print(max(max(x) for x in arr))
 
