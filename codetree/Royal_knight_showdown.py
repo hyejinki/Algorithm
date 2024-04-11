@@ -1,78 +1,75 @@
 from collections import deque
 L, N, Q = map(int, input().split())
-board = [[2]*(L+2)] + [[2] + list(map(int, input().split())) + [2] for _ in range(L)] + [[2]*(L+2)]
-knight = {}
-# v = [[0]*(L+2) for _ in range(L+2)]
-init = [0]*(N+1)
+arr = [[2] * (L + 2)] +[[2] + list(map(int, input().split())) + [2] for _ in range(L)] + [[2] * (L + 2)]
+knight = dict()
+init = [0] * (N+1)
+alive = [0] * (N+1)
+for n in range(1, N+1):
+    r, c, h, w, k = map(int, input().split())
+    knight[n] = [r, c, h, w, k]
+    init[n] = k
+    alive[n] = 1
+
+
 di = [-1, 0, 1, 0]
 dj = [0, 1, 0, -1]
 
-for m in range(1, N+1):
-    r, c, h, w, k = map(int, input().split())
-    knight[m] = [r, c, h, w, k]
-    init[m] = k
 
-    # for i in range(r, r+h):
-    #     v[i][c:c+w] = [m]*w
+def after(damage, q_set, d):
 
-def knight_push(idx, dr):
-    q = []
-    k_set = set()
+    for idx in q_set:
+        s, r, h, w, k = knight[idx]
+        knight[idx] = [s+di[d], r+dj[d], h, w, k-damage[idx]]
+        if damage[idx] >= k:
+            alive[idx] = 0
+
+
+def bfs(n, d):
+    q = deque()
+    q_set = set()
     damage = [0]*(N+1)
 
-    q.append(idx)
-    k_set.add(idx)
+    q.append(n)
+    q_set.add(n)
 
     while q:
-        s = q.pop(0)
-        si, sj, h, w, k = knight[s]
-
-        ni = si + di[dr]
-        nj = sj + dj[dr]
-        for i in range(ni, ni+h):
-            for j in range(nj, nj+w):
-                if board[i][j] == 2:
-                    return
-                if board[i][j] == 1:
-                    damage[s] += 1
-
-        for u in knight:
-            if u in k_set: continue
-
-            ti, tj, th, tw, tk = knight[u]
-            if ni+h-1>=ti and ni<=ti+th-1 and tj<=nj+w-1 and nj<=tj+tw-1:
-                q.append(u)
-                k_set.add(u)
+        idx = q.popleft()
+        r, c, h, w, k = knight[idx]
 
 
-    damage[idx] = 0
+        for i in range(r, r+h):
+            for j in range(c, c+w):
+                ni, nj = i+di[d], j+dj[d]
+                if arr[ni][nj] == 2:
+                    return False
+                if arr[ni][nj] == 1:
+                    damage[idx] += 1
 
-    # for x in k_set:
-    #     xi, xj, xh, xw, xk = knight[x]
-    #     for i in range(xi, xi+xh):
-    #         v[i][xj:xj+xw] = [0]*xw
 
-    for x in k_set:
-        xi, xj, xh, xw, xk = knight[x]
-        if xk <= damage[x]:
-            knight.pop(x)
-        else:
-            ni, nj = xi+di[dr], xj+dj[dr]
-            nk = xk-damage[x]
-            knight[x] = [ni, nj, xh, xw, nk]
+                for x in knight:
+                    if alive[x] ==0 or x in q_set:  continue
+                    xr, xc, xh, xw, xk = knight[x]
+                    if xr <= ni < xr + xh and xc <= nj < xc + xw:
+                        q.append(x)
+                        q_set.add(x)
 
-            # for i in range(ni, ni+xh):
-            #     v[i][nj:nj + xw] = [x] * xw
+    damage[n] = 0
+    after(damage, q_set, d)
 
 
 for _ in range(Q):
-    idx, dr = map(int, input().split())
-    if idx in knight:
-        knight_push(idx, dr)
+    if alive.count(0) == len(alive):
+        print(0)
+        break
 
+    n, d = map(int, input().split())
+    if alive[n] == 0:   continue
+    bfs(n, d)
 
-answer = 0
-for i in knight:
-    answer += init[i] - knight[i][4]
+ans = 0
+for i in range(1, N+1):
+    if alive[i] == 0:   continue
 
-print(answer)
+    ans += init[i] - knight[i][4]
+
+print(ans)
