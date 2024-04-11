@@ -1,109 +1,99 @@
 N, M, P, C, D = map(int, input().split())
-ri, rj = map(lambda x:int(x) - 1, input().split())
-point = [0] * (P+1)
-alive = [1] * (P+1)
-alive[0] = 0
-sleep = [1] * (P+1)
-santa = [[N]*2 for _ in range(P+1)]
+ei, ej = map(lambda x:int(x)-1, input().split())
+santa = [[] for _ in range(P)]
+alive = [0] * (P)
+sleep = [0] * (P)
+point = [0] * (P)
 for _ in range(P):
-    n, i, j = map(int, input().split())
-    santa[n] = [i-1, j-1]
+    pn, sr, sc = map(lambda x:int(x)-1, input().split())
+    santa[pn] = [sr, sc]
+    alive[pn] = 1
+    sleep[pn] = -1
 
 
-def push_santa(r1, c1, dr, dc, p, idx):
-    # 만났어
-    q = []
-    q.append((r1, c1, dr, dc, p, idx))
-    sleep[idx] = turn + 2
+def push(ei, ej, di, dj, p, idx):   #점수, 튕기기, 상호작용, 탈락
+    print(turn,"!!!!!!!!")
+    q = [(ei, ej, p, idx)]
 
     while q:
-        ci, cj, dr, dc, p, idx = q.pop(0)
-        ni, nj = ci + dr*p, cj + dc*p
-        index = idx
-        if 0<=ni<N and 0<=nj<N and [ni, nj] in santa:
-            for i in range(1, P+1):
-                if alive[i] == 1 and santa[i] == [ni, nj]:
-                    index = i
-                    break
-            q.append((ni, nj, dr, dc, 1, index))
-            santa[idx] = [ni, nj]
-
-        elif 0<=ni<N and 0<=nj<N:
-            santa[idx] = [ni, nj]
-
-
-        else:
-            print(idx)
+        ci, cj, p, idx = q.pop(0)
+        ni, nj = ci + di*p, cj + dj*p
+        # 탈락
+        if ni<0 or nj<0 or ni>=N or nj>=N:
             alive[idx] = 0
+            return
+
+        for i in range(P):
+            if alive[i] != 0 and santa[i] == [ni, nj]:
+                q.append((ni, nj, 1, i))
+        else:
+            santa[idx] = [ni, nj]
+            return
+
+
 
 for turn in range(1, M+1):
-    if alive.count(1) == 0:
+    if alive.count(0) == len(alive):
         break
 
-    # 루돌푸 움직임
-    minx = []
-    minV = N*N*2
-    for idx in range(1, P+1):
-        if alive[idx]==0 : continue
-        si, sj = santa[idx]
-        dist = (ri - si)**2 + (rj - sj)**2
-        if dist < minV:
-            minx = [(si, sj, idx)]
-            minV = dist
-        elif dist == minV:
-            minx.append((si, sj, idx))
-    minx.sort(reverse=True)
+    minV = 5001
+    mi, mj = N, N
+    idx = 31
+    for i in range(P):
+        if alive[i] == 0:   continue
+        si, sj = santa[i]
+        diff = (ei - si)**2 + (ej - sj)**2
+        if minV > diff or (minV == diff and si > mi) or (minV==diff and si>mi and sj>mj):
+            minV, mi, mj, idx = diff, si, sj, i
 
-    si, sj, mnidx = minx[0]
-
-    # 방향
-    di, dj = 0, 0
-    if ri - si > 0:
+    di, dj = (0, 0)
+    if ei>mi:
         di = -1
-    elif ri - si < 0:
+    elif ei<mi:
         di = 1
-
-    if rj - sj > 0:
+    if ej>mj:
         dj = -1
-    elif rj - sj <0:
+    elif ej<mj:
         dj = 1
 
-    ni, nj = ri + di, rj + dj
+    ei += di
+    ej += dj
 
-    if (ni, nj) == (si, sj):
-        point[mnidx] += C
-        push_santa(ni, nj, di, dj,C, mnidx)
-
-    else:
-        ri, rj = ni, nj
+    if (ei, ej) == (di, dj):    # 잡았다 요놈
+        sleep[idx] = turn
+        push(ei, ej, di, dj,C, idx)
+        point[idx] += C
 
 
-    # 산타 움직임
-    for idx in range(1, P+1):
-        if alive[idx] == 0:    continue
-        if sleep[idx] > turn:   continue
-        si, sj = santa[idx]
-        dist = (ri - si)**2 + (rj - sj)**2
 
-        can = []
-        for dsi, dsj in ((-1, 0), (0, 1), (1, 0), (0, -1)):
-            nsi, nsj = si + dsi, sj + dsj
-            new_dist = (ri - nsi)**2 + (rj - nsj)**2
-            if 0<=nsi<N and 0<=nsj<N and new_dist < dist and [nsi, nsj] not in santa:
-                can.append([nsi, nsj, dsi, dsj])
-                dist = new_dist
+    for i in range(P):      #기절 처리해야돼
+        if alive[i] == 0:   continue
+        if sleep[i] + 2 > turn: continue
+        ci, cj = santa[i]
+        mni, mnj = ci, cj
+        ndi, ndj = 0, 0
+        diff = (ei-ci)**2 + (ej-cj)**2
+        for di, dj in ((-1, 0), (0, 1), (1, 0), (0, -1)):
+            ni, nj = ci + di, cj + dj
+            nd = (ei-ni)**2 + (ej-nj)**2
+            if 0<=ni<N and 0<=nj<N and (ni, nj) not in santa and diff > nd:
+                mni, mnj = ni, nj
+                ndi, ndj = di, dj
+                diff = nd
 
-        if len(can) == 0:   continue
-        sr, sc, dr, dc = can[-1]
-
-        if (ri, rj) == (sr, sc):
+        if (mni, mnj) == (ei, ej):     #잡았다
+            sleep[i] = turn
             point[idx] += D
-            push_santa(sr, sc, -dr, -dc, D, idx)
+            push(ei, ej, -ndi, -ndj, D, i)
         else:
-            santa[idx] = [sr, sc]
+            santa[i] = [mni, mnj]
 
-    for i in range(1, P+1):
-        if alive[i] == 1:
-            point[i] += 1
 
-print(*point[1:])
+    for s in range(P):
+        if alive[s] == 0:   continue
+        point[s] += 1
+
+    print("turn", turn)
+    print("point", point)
+    print("alive", alive)
+print(point)
